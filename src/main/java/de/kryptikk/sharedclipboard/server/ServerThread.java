@@ -1,27 +1,36 @@
 package de.kryptikk.sharedclipboard.server;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.List;
 
 @RequiredArgsConstructor
 public class ServerThread extends Thread {
 
     private final Socket socket;
+    private final List<ServerThread> clients;
+    @Getter
+    private PrintWriter out;
 
     public void run() {
+
         try {
             InputStream is = socket.getInputStream();
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+            BufferedReader in = new BufferedReader(new InputStreamReader(is));
 
             OutputStream os = socket.getOutputStream();
-            PrintWriter pw = new PrintWriter(os, true);
+            out = new PrintWriter(os, true);
+
+            clients.add(this);
 
             String text;
             do {
-                text = br.readLine();
-                pw.println(text);
+                text = in.readLine();
+                String finalText = text;
+                clients.parallelStream().forEach(c -> c.getOut().println(finalText));
             } while (!text.equals("!bye"));
             socket.close();
         } catch (IOException ioe) {
